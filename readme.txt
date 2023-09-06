@@ -5,7 +5,7 @@ Tags: appointment, appointments, Booking, calendar, plugin, reservation, reserva
 Requires at least: 5.2
 Tested up to: 6.0
 Requires PHP: 7.2
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: AGPL-3.0
 
 Provides an integration between Easy Appointments and CiviCRM. A new appointment is send to a form processor in CiviCRM.
@@ -25,3 +25,4 @@ For more documentation see: [README.md](https://github.com/CiviMRF/integration-c
 == Changelog ==
 
 1.0.0: First version.
+1.0.1: Also submit appointments from the backend to CiviCRM. Also when they are changed or deleted.

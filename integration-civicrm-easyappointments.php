@@ -2,7 +2,7 @@
 /*
 Plugin Name: Integration between Easy Appointments and CiviCRM
 Description: Provides an integration between Easy Appointments and CiviCRM. A new appointment is send to a form processor in CiviCRM. You can use this plugin with Connector to CiviCRM with CiviMcRestFace (https://wordpress.org/plugins/connector-civicrm-mcrestface/)
-Version:     1.0.0
+Version:     1.0.1
 Author:      Jaap Jansma
 License:     AGPL3
 License URI: https://www.gnu.org/licenses/agpl-3.0.html
@@ -61,12 +61,44 @@ function integration_civicrm_easyappointments_api($entity, $action, $params, $op
 }
 
 add_action('ea_new_app', function($id, $appointment, $isFinal) {
+  if ($isFinal || (is_admin() && is_user_logged_in())) {
+    integration_civicrm_easyappointments_submit_to_form_processor($id, 'new');
+  }
+}, 10, 3);
+
+add_action('ea_edit_app', function($id) {
+  if (is_admin() && is_user_logged_in()) {
+    integration_civicrm_easyappointments_submit_to_form_processor($id, 'edit');
+  }
+}, 10, 1);
+
+add_action('wp_ajax_ea_appointment', function() {
+  if (is_admin() && is_user_logged_in()) {
+    $method = $_SERVER['REQUEST_METHOD'];
+
+    if (!empty($_REQUEST['_method'])) {
+      $method = strtoupper($_REQUEST['_method']);
+      unset($_REQUEST['_method']);
+    }
+    if ($method == 'DELETE') {
+      $id = null;
+      if (isset($_REQUEST['id'])) {
+        $id = $_REQUEST['id'];
+      }
+      if ($id) {
+        integration_civicrm_easyappointments_submit_to_form_processor($id, 'delete');
+      }
+    }
+  }
+}, 0);
+
+function integration_civicrm_easyappointments_submit_to_form_processor($appointment_id, $action) {
   global $ea_app;
   $models = $ea_app->get_container()['db_models'];
   $options = $ea_app->get_container()['options'];
-  $civicrm_ea_form_processor = $options->get_option_value('civicrm_ea_form_processor', '');
-  if ($isFinal && !empty($civicrm_ea_form_processor)) {
-    $app_data = $models->get_appintment_by_id($id);
+  $civicrm_ea_form_processor = $options->get_option_value('civicrm_ea_form_processor_'.$action, '');
+  if (!empty($civicrm_ea_form_processor)) {
+    $app_data = $models->get_appintment_by_id($appointment_id);
     $options = [];
     $profiles = integration_civicrm_easyappointments_get_profiles();
     foreach($profiles as $profile => $profile_data) {
@@ -80,7 +112,7 @@ add_action('ea_new_app', function($id, $appointment, $isFinal) {
       }
     }
   }
-}, 10, 3);
+}
 
 function integration_civicrm_easyappointments_settings_page() {
   global $ea_app;
@@ -97,13 +129,28 @@ function integration_civicrm_easyappointments_settings_page() {
 
   $models = $ea_app->get_container()['db_models'];
   $options = $ea_app->get_container()['options'];
-  if (isset($_REQUEST['civicrm_ea_form_processor'])) {
-    $civicrm_ea_form_processor = sanitize_text_field($_REQUEST['civicrm_ea_form_processor']);
-    $option['ea_key'] = 'civicrm_ea_form_processor';
+  if (isset($_REQUEST['civicrm_ea_form_processor_new'])) {
+    $civicrm_ea_form_processor = sanitize_text_field($_REQUEST['civicrm_ea_form_processor_new']);
+    $option['ea_key'] = 'civicrm_ea_form_processor_new';
     $option['ea_value'] = $civicrm_ea_form_processor;
     $models->update_option($option);
   }
-  $civicrm_ea_form_processor = $options->get_option_value('civicrm_ea_form_processor', '');
+  if (isset($_REQUEST['civicrm_ea_form_processor_edit'])) {
+    $civicrm_ea_form_processor = sanitize_text_field($_REQUEST['civicrm_ea_form_processor_edit']);
+    $option['ea_key'] = 'civicrm_ea_form_processor_edit';
+    $option['ea_value'] = $civicrm_ea_form_processor;
+    $models->update_option($option);
+  }
+  if (isset($_REQUEST['civicrm_ea_form_processor_delete'])) {
+    $civicrm_ea_form_processor = sanitize_text_field($_REQUEST['civicrm_ea_form_processor_delete']);
+    $option['ea_key'] = 'civicrm_ea_form_processor_delete';
+    $option['ea_value'] = $civicrm_ea_form_processor;
+    $models->update_option($option);
+  }
+
+  $civicrm_ea_form_processor_new = $options->get_option_value('civicrm_ea_form_processor_new', '');
+  $civicrm_ea_form_processor_edit = $options->get_option_value('civicrm_ea_form_processor_edit', '');
+  $civicrm_ea_form_processor_delete = $options->get_option_value('civicrm_ea_form_processor_delete', '');
 
   $fields = [
     'id',
