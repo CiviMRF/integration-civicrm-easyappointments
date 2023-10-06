@@ -2,7 +2,7 @@
 /*
 Plugin Name: Integration between Easy Appointments and CiviCRM
 Description: Provides an integration between Easy Appointments and CiviCRM. A new appointment is send to a form processor in CiviCRM. You can use this plugin with Connector to CiviCRM with CiviMcRestFace (https://wordpress.org/plugins/connector-civicrm-mcrestface/)
-Version:     1.0.1
+Version:     1.0.2
 Author:      Jaap Jansma
 License:     AGPL3
 License URI: https://www.gnu.org/licenses/agpl-3.0.html
@@ -61,8 +61,15 @@ function integration_civicrm_easyappointments_api($entity, $action, $params, $op
 }
 
 add_action('ea_new_app', function($id, $appointment, $isFinal) {
-  if ($isFinal || (is_admin() && is_user_logged_in())) {
+  if ($isFinal) {
     integration_civicrm_easyappointments_submit_to_form_processor($id, 'new');
+  } elseif (is_admin() && is_user_logged_in() && !$isFinal) {
+    $data = json_decode(file_get_contents("php://input"), true);
+    if (!empty($data['id'])) {
+      integration_civicrm_easyappointments_submit_to_form_processor($id, 'edit');
+    } else {
+      integration_civicrm_easyappointments_submit_to_form_processor($id, 'new');
+    }
   }
 }, 10, 3);
 
